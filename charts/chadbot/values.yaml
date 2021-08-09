@@ -1,6 +1,5 @@
 chad:
   botToken: xxx
-  callbackUrl: http://chadbot.chat.svc
   callbackPort: "7357"
   team: nix
   url: http://mattermost-team-edition.chat.svc
