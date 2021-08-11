@@ -17,11 +17,13 @@ log = logging.getLogger(__name__)
 class FlowQ(ExtendedPlugin):
     team = None
     settings_channel = None
+    phantom_user_id = None
 
     def on_load(self, driver: Driver):
         self.team = driver.teams.get_team_by_name(environ['BOT_TEAM'])['id']
         self.settings_channel = driver.channels.get_channel_by_name(self.team, environ['SETTINGS_CHANNEL'])['id']
         self.reload_questions()
+        self.phantom_user_id = self.driver.users.get_user_by_username('phantom').get('id')
 
     def reload_questions(self):
         g.questions.clear()
@@ -41,6 +43,9 @@ class FlowQ(ExtendedPlugin):
             FlowQ.load_question(
                 yaml.safe_load(yaml_extractor(post['message']).group(2)), g_questions, g_specials, g_from_actions
             )
+        for qk, qq in g_from_actions.items():
+            if isinstance(qq, str):
+                g_from_actions[qk] = g_questions[qq]
 
     @staticmethod
     def ml_from_index(y: Dict, idx: str) -> MultiLingualString:
@@ -71,10 +76,7 @@ class FlowQ(ExtendedPlugin):
                 q.a[a_id] = Answer(a_id, FlowQ.ml_from_index(a, 'r'))
                 FlowQ.load_question(a, g_questions, g_specials, g_from_actions)
                 answer_target = a.get('l', a.get('i'))
-                tq = g_questions.get(answer_target)
-                if tq is None:
-                    g_questions[answer_target] = tq = Question(answer_target, MultiLingualString(), OrderedDict())
-                g_from_actions[f'{i}_{a_id}'] = tq
+                g_from_actions[f'{i}_{a_id}'] = g_questions.get(answer_target, answer_target)
 
     @staticmethod
     def load_answer(answers, line):
@@ -100,7 +102,7 @@ class FlowQ(ExtendedPlugin):
             if member['scheme_admin']:
                 continue
             user_id = member['user_id']
-            if user_id == self.driver.user_id:
+            if user_id in (self.driver.user_id, self.phantom_user_id):
                 continue
             t = self.driver.users.get_user(user_id)
             t['user_icon'] = f"{environ['EXTERNAL_MM_URL']}{self.driver.default_options['basepath']}" \

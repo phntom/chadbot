@@ -2,6 +2,7 @@ import logging
 from os import environ
 from re import IGNORECASE
 
+from mattermostdriver.exceptions import ResourceNotFound
 from mmpy_bot import listen_to, Message, listen_webhook, WebHookEvent, ActionEvent
 
 from chadbot.flowq import FlowQ
@@ -13,12 +14,50 @@ log = logging.getLogger(__name__)
 class LinkedIn(FlowQ):
     channel_targets = {}
 
+    @listen_to(r"^[^ ]+ joined the team\.$")
+    async def joined_team(self, message: Message):
+        if message.channel_name != 'town-square':
+            log.info("join team message not town square channel")
+            return
+        if message.sender_name != 'System':
+            log.info("joined message not from System")
+            return
+        user = self.driver.users.get_user(message.user_id)
+        username = user['username']
+        target_channel = f'anton-{username}'
+        try:
+            chan = self.driver.channels.get_channel_by_name(message.team_id, f'anton-{username}')
+        except ResourceNotFound:
+            chan = self.driver.channels.create_channel(options={
+                'team_id': message.team_id,
+                'name': target_channel,
+                'display_name': f"Anton & {user['first_name']}",
+                'type': 'P',
+            })
+            self.driver.channels.add_user(chan['id'], options={
+                'team_id': message.team_id,
+                'user_id': self.driver.user_id,
+            })
+            self.driver.channels.add_user(chan['id'], options={
+                'team_id': message.team_id,
+                'user_id': self.pha,
+            })
+        self.driver.channels.add_user(chan['id'], options={
+            'team_id': message.team_id,
+            'user_id': user['id'],
+        })
+        user['user_icon'] = f"{environ['EXTERNAL_MM_URL']}{self.driver.default_options['basepath']}" \
+                            f"{self.driver.users.endpoint}/{user['id']}/image"
+        self.channel_targets[chan['id']] = user
+        await self.start(chan['id'])
+
     @listen_to("restart", IGNORECASE)
     async def start_keyword(self, message: Message):
         await self.start(message.channel_id)
 
     async def start(self, channel_id):
-        self.channel_targets[channel_id] = await self.populate_target(channel_id)
+        if channel_id not in self.channel_targets:
+            self.channel_targets[channel_id] = await self.populate_target(channel_id)
         await self.print_question(channel_id, g.specials['init'][0].id)
 
     @listen_to("reload", IGNORECASE, allowed_users=['phantom'])
