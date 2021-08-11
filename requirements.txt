@@ -1,3 +1,4 @@
 mmpy-bot~=2.0.2
 mattermostdriver~=7.3.1
 aiohttp~=3.7.4.post0
+PyYAML~=5.4.1

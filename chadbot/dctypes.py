@@ -6,7 +6,8 @@ from typing import OrderedDict as OrderedDictType, Optional, List
 @dataclass
 class MultiLingualString:
     en: Optional[str] = None
-    he: Optional[str] = None
+    hemale: Optional[str] = None
+    hefemale: Optional[str] = None
 
 
 @dataclass
@@ -18,6 +19,5 @@ class Answer:
 @dataclass
 class Question:
     id: str
-    pre: List[MultiLingualString] = field(default_factory=list)
     q: MultiLingualString = field(default_factory=MultiLingualString)
     a: OrderedDictType[str, Answer] = field(default_factory=OrderedDict)

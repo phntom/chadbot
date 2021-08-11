@@ -1,8 +1,10 @@
 import logging
+import re
 from collections import OrderedDict
 from os import environ
 from typing import Dict
 
+import yaml
 from mmpy_bot.driver import Driver
 
 from chadbot.dctypes import MultiLingualString, Answer, Question
@@ -31,24 +33,48 @@ class FlowQ(ExtendedPlugin):
 
     @staticmethod
     def load_questions(posts, g_questions, g_specials, g_from_actions):
-        for post_id in posts['order']:
+        yaml_extractor = re.compile(r'(```yaml)(.*)(```)', re.DOTALL).match
+        for post_id in reversed(posts['order']):
             post = posts['posts'][post_id]
-            pre = []
-            specials = set()
-            from_actions = set()
-            answers = OrderedDict()
-            question_text = None
-            for line in post['message'].split('\n'):
-                if line.startswith('#'):
-                    q_id, language = FlowQ.load_hashtags(line, specials, from_actions)
-                    FlowQ.commit_question(answers, language, pre, q_id, question_text, specials, from_actions,
-                                          g_questions, g_specials, g_from_actions)
-                elif line.startswith('* '):
-                    FlowQ.load_answer(answers, line)
-                    if question_text is None:
-                        question_text = pre.pop(-1)
-                else:
-                    pre.append(line)
+            if '```yaml' not in post['message']:
+                continue
+            FlowQ.load_question(
+                yaml.safe_load(yaml_extractor(post['message']).group(2)), g_questions, g_specials, g_from_actions
+            )
+
+    @staticmethod
+    def ml_from_index(y: Dict, idx: str) -> MultiLingualString:
+        q = y[idx]
+        if isinstance(q, list):
+            q = '\n'.join(q)
+        qm = y.get(idx + 'm', q)
+        if isinstance(qm, list):
+            qm = '\n'.join(qm)
+        qf = y.get(idx + 'f', qm)
+        if isinstance(qf, list):
+            qf = '\n'.join(qf)
+        return MultiLingualString(q, qm, qf)
+
+    @staticmethod
+    def load_question(y: Dict, g_questions, g_specials, g_from_actions):
+        if 'i' not in y:
+            # probably a link, no need to load a new question
+            return
+        i = y['i']
+        q = g_questions.get(i, Question(i, MultiLingualString(), OrderedDict()))
+        q.q = FlowQ.ml_from_index(y, 'q')
+        g_questions[i] = q
+        if 's' in y:
+            g_specials[y['s']].append(q)
+        if 'a' in y:
+            for a_id, a in y['a'].items():
+                q.a[a_id] = Answer(a_id, FlowQ.ml_from_index(a, 'r'))
+                FlowQ.load_question(a, g_questions, g_specials, g_from_actions)
+                answer_target = a.get('l', a.get('i'))
+                tq = g_questions.get(answer_target)
+                if tq is None:
+                    g_questions[answer_target] = tq = Question(answer_target, MultiLingualString(), OrderedDict())
+                g_from_actions[f'{i}_{a_id}'] = tq
 
     @staticmethod
     def load_answer(answers, line):
@@ -58,42 +84,6 @@ class FlowQ(ExtendedPlugin):
         answer = answer[:-len(a_id)].strip()
         a_id = a_id[1:]
         answers[a_id] = answer
-
-    @staticmethod
-    def load_hashtags(line, specials, from_actions):
-        q_id = None
-        language = None
-        for hashtag in line.split():
-            if hashtag.startswith('#l_'):
-                language = hashtag[3:]
-            elif hashtag.startswith('#q_'):
-                q_id = hashtag[3:]
-            elif hashtag.startswith('#s_'):
-                specials.add(hashtag[3:])
-            elif hashtag.startswith('#f_'):
-                from_actions.add(hashtag[3:])
-        return q_id, language
-
-    @staticmethod
-    def commit_question(answers, language, pre, q_id, question_text, specials, from_actions, g_questions, g_specials,
-                        g_from_actions):
-        assert q_id
-        q = g_questions.get(q_id, Question(id=q_id, q=MultiLingualString(None, None), a=OrderedDict(), pre=[]))
-        g_questions[q_id] = q
-        for special in specials:
-            g_specials[special].append(q)
-        setattr(q.q, language, question_text)
-        for a_id, a_text in answers.items():
-            a_item = q.a.get(a_id, Answer(a_id, MultiLingualString(None, None)))
-            setattr(a_item.text, language, a_text)
-            q.a[a_id] = a_item
-        if q.pre:
-            for q_pre, pre_text in zip(q.pre, pre):
-                setattr(q_pre, language, pre_text)
-        else:
-            q.pre = [MultiLingualString(**{language: pre_text}) for pre_text in pre]
-        for fa in from_actions:
-            g_from_actions[fa] = q
 
     @staticmethod
     def get_text(text: MultiLingualString, t: Dict):

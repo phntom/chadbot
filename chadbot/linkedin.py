@@ -13,9 +13,11 @@ log = logging.getLogger(__name__)
 class LinkedIn(FlowQ):
     channel_targets = {}
 
-    @listen_to("start", IGNORECASE)
-    async def start(self, message: Message):
-        channel_id = message.channel_id
+    @listen_to("restart", IGNORECASE)
+    async def start_keyword(self, message: Message):
+        await self.start(message.channel_id)
+
+    async def start(self, channel_id):
         self.channel_targets[channel_id] = await self.populate_target(channel_id)
         await self.print_question(channel_id, g.specials['init'][0].id)
 
@@ -27,34 +29,37 @@ class LinkedIn(FlowQ):
     async def print_question(self, channel_id, question_id, disable_post_id=''):
         q = g.questions[question_id]
         t = self.channel_targets[channel_id]
-        if q.pre:
-            for pre_q in q.pre:
-                self.driver.create_post(channel_id, self.get_text(pre_q, t))
-                await self.user_typing(channel_id)
-        props = {
-            "attachments": [
-                {
-                    "actions": [
-                        {
-                            "id": a.id,
-                            "name": self.get_text(a.text, t),
-                            "integration": {
-                                "url": f'{environ["WEBHOOK_HOST"]}/hooks/answer',
-                                "context": {
-                                    "q": q.id,
-                                    "a": a.id,
-                                    "d": disable_post_id,
+        q_text = self.get_text(q.q, t)
+        lines = q_text.split('\n')
+        for line in (lines[:-1] if q.a else lines):
+            await self.user_typing(channel_id)
+            self.driver.create_post(channel_id, line)
+        if q.a:
+            await self.user_typing(channel_id)
+            props = {
+                "attachments": [
+                    {
+                        "actions": [
+                            {
+                                "id": a.id,
+                                "name": self.get_text(a.text, t),
+                                "integration": {
+                                    "url": f'{environ["WEBHOOK_HOST"]}/hooks/answer',
+                                    "context": {
+                                        "q": q.id,
+                                        "a": a.id,
+                                        "d": disable_post_id,
+                                    }
                                 }
-                            }
-                        } for a in q.a.values()
-                    ],
-                    "footer": f"{t['first_name']} {t['last_name']}",
-                    "footer_icon": t['user_icon'],
-                    "title": self.get_text(q.q, t),
-                }
-            ]
-        }
-        self.driver.create_post(channel_id, "", props=props)
+                            } for a in q.a.values()
+                        ],
+                        "footer": f"{t['first_name']} {t['last_name']}",
+                        "footer_icon": t['user_icon'],
+                        "title": lines[-1],
+                    }
+                ]
+            }
+            self.driver.create_post(channel_id, "", props=props)
 
     @listen_webhook("answer")
     async def answer(self, event: WebHookEvent):
@@ -97,7 +102,6 @@ class LinkedIn(FlowQ):
                 }},
             },
         )
-        await self.user_typing(event.channel_id)
 
         q = g.from_actions.get(f'{q.id}_{a_id}')
         if q is None:
