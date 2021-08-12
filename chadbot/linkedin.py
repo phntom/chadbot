@@ -114,10 +114,12 @@ class LinkedIn(FlowQ):
         elif q.id == 'job_title':
             t[q.id] = a_text
 
+        q_text = self.get_text(q.q, t).split('\n')[-1]
+
         self.driver.respond_to_web(
             event,
             {
-                "update": {"message": self.get_text(q.q, t), "props": {
+                "update": {"message": q_text, "props": {
                     "attachments": [
                         {
                             "author_name": f"{t['first_name']} {t['last_name']}",

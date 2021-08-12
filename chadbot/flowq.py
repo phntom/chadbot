@@ -89,7 +89,7 @@ class FlowQ(ExtendedPlugin):
 
     @staticmethod
     def get_text(text: MultiLingualString, t: Dict):
-        ret = getattr(text, t['locale'], None)
+        ret = getattr(text, t.get('locale', 'en'), None)
         if ret is None:
             ret = text.en
         if ret:
@@ -97,7 +97,7 @@ class FlowQ(ExtendedPlugin):
         return ret
 
     async def populate_target(self, channel_id):
-        t = {}
+        t = None
         for member in self.driver.channels.get_channel_members(channel_id):
             if member['scheme_admin']:
                 continue
@@ -107,5 +107,6 @@ class FlowQ(ExtendedPlugin):
             t = self.driver.users.get_user(user_id)
             t['user_icon'] = f"{environ['EXTERNAL_MM_URL']}{self.driver.default_options['basepath']}" \
                              f"{self.driver.users.endpoint}/{user_id}/image"
+            t['job_title'] = 'Engineer'
             break
         return t
