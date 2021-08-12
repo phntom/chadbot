@@ -40,7 +40,7 @@ class LinkedIn(FlowQ):
             })
             self.driver.channels.add_user(chan['id'], options={
                 'team_id': message.team_id,
-                'user_id': self.pha,
+                'user_id': self.phantom_user_id,
             })
         self.driver.channels.add_user(chan['id'], options={
             'team_id': message.team_id,
