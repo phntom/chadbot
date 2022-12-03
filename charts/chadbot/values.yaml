@@ -13,7 +13,8 @@ image:
   repository: phntom/chadbot
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
-  tag: ""
+  tag: "0.1.36"
+  hash: "sha256:9357dcf6c06877806150bf1ba7cacc20545b56b23d5afaf213f1a2e3dc9246e5"
 
 imagePullSecrets: []
 nameOverride: ""
@@ -77,8 +78,8 @@ autoscaling:
   targetCPUUtilizationPercentage: 80
   # targetMemoryUtilizationPercentage: 80
 
-nodeSelector:
-  doks.digitalocean.com/node-pool: pool-production
+#nodeSelector:
+#  doks.digitalocean.com/node-pool: pool-production
 
 tolerations: []
 
