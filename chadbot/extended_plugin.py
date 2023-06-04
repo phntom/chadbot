@@ -5,6 +5,7 @@ from typing import Optional
 from mattermostdriver.exceptions import NotEnoughPermissions
 from mmpy_bot import Plugin, Message
 from mmpy_bot.driver import Driver
+from mmpy_bot.plugins import PluginManager
 from mmpy_bot.settings import Settings
 
 
@@ -12,8 +13,8 @@ class ExtendedPlugin(Plugin):
     seq = 1
     direct_channels = {}
 
-    def initialize(self, driver: Driver, settings: Optional[Settings] = None):
-        super().initialize(driver, settings)
+    def initialize(self, driver: Driver, plugin_manager: PluginManager, settings: Settings):
+        super().initialize(driver, plugin_manager, settings)
         self.on_load(driver)
         return self
 

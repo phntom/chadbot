@@ -13,8 +13,8 @@ image:
   repository: phntom/chadbot
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
-  tag: "0.1.36"
-  hash: "sha256:9357dcf6c06877806150bf1ba7cacc20545b56b23d5afaf213f1a2e3dc9246e5"
+  tag: "0.1.38"
+  hash: "sha256:043143964cd01bf28287e0330f91f2a4f4b4cc780a8dc660796455314218cab8"
 
 imagePullSecrets: []
 nameOverride: ""
@@ -59,7 +59,11 @@ ingress:
   #    hosts:
   #      - chart-example.local
 
-resources: {}
+resources:
+  limits:
+    cpu: 50m
+  requests:
+    cpu: 10m
   # We usually recommend not to specify default resources and to leave this as a conscious
   # choice for the user. This also increases chances charts run on environments with little
   # resources, such as Minikube. If you do want to specify resources, uncomment the following
