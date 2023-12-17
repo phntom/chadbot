@@ -1,11 +1,11 @@
 chad:
   botToken: xxx
-  callbackPort: "7357"
-  team: nix
-  url: http://mattermost-team-edition.chat.svc
+  url: http://mattermost-team-edition.chat.svc:8065
   externalUrl: https://kix.co.il
-  port: "8065"
   settingsChannel: chad-config
+  adminUser: phantom
+  callbackURL: http://chadbot.chat.svc:7357
+  channelPrefix: chad2
 
 replicaCount: 1
 
@@ -13,8 +13,8 @@ image:
   repository: phntom/chadbot
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
-  tag: "0.1.38"
-  hash: "sha256:043143964cd01bf28287e0330f91f2a4f4b4cc780a8dc660796455314218cab8"
+  tag: "0.2.3"
+  hash: "sha256:97c28e4178ad80fcb62e01eca1c587f80ef26ff0235813ae66a8bdb0f1b1253b"
 
 imagePullSecrets: []
 nameOverride: ""
@@ -44,7 +44,7 @@ securityContext: {}
 
 service:
   type: ClusterIP
-  port: 80
+  port: 7357
 
 ingress:
   enabled: false
